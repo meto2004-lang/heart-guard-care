@@ -1,0 +1,47 @@
+# Built files
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# App build outputs
+/app/build
+/mobile/app/build
+/watch/app/build
+/shared/build
+/desktop/build
+
+# Gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug files
+*.hprof
+*.trace
+
+# Local configuration
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# Screenshots
+screen*.png
+
+# Kotlin errors
+.kotlin/

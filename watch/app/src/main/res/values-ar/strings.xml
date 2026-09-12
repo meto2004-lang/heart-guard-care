@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">حارس القلب</string>
+    <string name="heart_rate">معدل النبض</string>
+    <string name="temperature">درجة الحرارة</string>
+    <string name="fall_detection">كشف السقوط</string>
+    <string name="status_normal">طبيعي</string>
+    <string name="status_warning">تحذير</string>
+    <string name="status_critical">حرج</string>
+    <string name="action_sos">طوارئ</string>
+    <string name="action_start">بدء</string>
+    <string name="action_stop">إيقاف</string>
+    <string name="notification_channel_name">مراقبة الصحة</string>
+    <string name="notification_channel_description">تنبيهات مراقبة الصحة المستمرة</string>
+    <string name="notification_title">حارس القلب نشط</string>
+    <string name="notification_text">جاري مراقبة حساسات الصحة...</string>
+</resources>
