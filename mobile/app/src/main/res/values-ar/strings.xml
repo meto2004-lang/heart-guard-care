@@ -19,4 +19,19 @@
     <string name="alerts_title">التنبيهات</string>
     <string name="notification_channel_name">تنبيهات الطوارئ</string>
     <string name="notification_channel_description">تنبيهات طوارئ من ساعة الحارس</string>
+
+    <!-- إنذار الطوارئ الصوتي (SOS) -->
+    <string name="sos_button_label">SOS</string>
+    <string name="sos_button_hint">اضغط لطلب المساعدة — سيصدر إنذار بصوت مرتفع على الجوال</string>
+    <string name="sos_test_alarm">اختبار صوت الإنذار</string>
+    <string name="sos_alarm_running_hint">الإنذار يعمل الآن بصوت مرتفع</string>
+    <string name="sos_alarm_stop">إيقاف الإنذار</string>
+    <string name="sos_alarm_channel_name">إنذار الطوارئ SOS</string>
+    <string name="sos_alarm_channel_description">صفارة إنذار عالية تعمل عند الضغط على زر الطوارئ</string>
+    <string name="sos_alarm_notification_title">إنذار طوارئ SOS!</string>
+    <string name="sos_alarm_default_message">تم تفعيل زر الطوارئ SOS</string>
+    <string name="sos_alarm_screen_title">نداء طوارئ</string>
+    <string name="sos_alarm_auto_stop_hint">سيتوقف الإنذار تلقائياً بعد 5 دقائق</string>
+    <string name="sos_message_from_phone">تم ضغط زر الطوارئ من تطبيق الجوال!</string>
+    <string name="sos_alarm_test_message">اختبار صوت إنذار الطوارئ</string>
 </resources>

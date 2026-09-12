@@ -16,6 +16,8 @@ import com.heartguard.mobile.data.local.AlertEntity
 import com.heartguard.mobile.data.repository.AlertRepository
 import com.heartguard.mobile.ui.dashboard.DashboardActivity
 import com.heartguard.shared.constants.AlertConstants
+import com.heartguard.shared.models.AlertSeverity
+import com.heartguard.shared.models.AlertType
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -28,6 +30,19 @@ class DataLayerListenerService : WearableListenerService() {
         private const val TAG = "DataLayerListenerMobile"
         private const val CHANNEL_ID = "emergency_alerts"
         private const val NOTIFICATION_CHANNEL_NAME = "تنبيهات الطوارئ"
+
+        /**
+         * التنبيهات التي تشغّل صفارة الإنذار العالية على الجوال.
+         * SOS دائماً، إضافةً إلى أي تنبيه حرج (سقوط، نبض/حرارة حرجة).
+         */
+        private val LOUD_ALARM_ALERT_TYPES = setOf(
+            AlertType.SOS_MANUAL.name,
+            AlertType.FALL_DETECTED.name
+        )
+
+        private fun requiresLoudAlarm(alertType: String, severity: String): Boolean =
+            alertType in LOUD_ALARM_ALERT_TYPES ||
+                severity.equals(AlertSeverity.CRITICAL.name, ignoreCase = true)
     }
 
     @Inject lateinit var alertRepository: AlertRepository
@@ -97,7 +112,7 @@ class DataLayerListenerService : WearableListenerService() {
                     timestamp = timestamp
                 )
                 alertRepository.insertAlert(alert)
-                showNotification(alertType, message, severity)
+                notifyCaregiver(alertType, message, severity)
                 emergencyDispatcher.dispatchEmergencyAlert(alert)
             }
         } catch (e: Exception) {
@@ -130,7 +145,7 @@ class DataLayerListenerService : WearableListenerService() {
             )
             alertRepository.insertAlert(alert)
 
-            showNotification(alertType, message, severity)
+            notifyCaregiver(alertType, message, severity)
 
             emergencyDispatcher.dispatchEmergencyAlert(alert)
         }
@@ -151,6 +166,19 @@ class DataLayerListenerService : WearableListenerService() {
 
         healthDataHolder.setWatchConnected(true)
         healthDataHolder.updateHealthData(heartRate, temperature)
+    }
+
+    /**
+     * التنبيهات الحرجة (خصوصاً SOS) تشغّل صفارة إنذار عالية ومستمرة على الجوال
+     * مع شاشة إنذار كاملة، وباقي التنبيهات تظهر كإشعار عادي.
+     */
+    private fun notifyCaregiver(alertType: String, message: String, severity: String) {
+        if (requiresLoudAlarm(alertType, severity)) {
+            Log.w(TAG, "Loud SOS alarm requested for $alertType ($severity)")
+            EmergencyAlarmService.trigger(this, alertType, message)
+        } else {
+            showNotification(alertType, message, severity)
+        }
     }
 
     private fun showNotification(alertType: String, message: String, severity: String) {

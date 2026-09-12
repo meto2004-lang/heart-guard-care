@@ -3,6 +3,7 @@ package com.heartguard.mobile.ui.dashboard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -12,9 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.heartguard.mobile.R
 import com.heartguard.mobile.data.local.AlertEntity
 import com.heartguard.mobile.data.local.EmergencyContactEntity
 
@@ -45,6 +48,16 @@ fun DashboardScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item {
+                SosAlarmCard(
+                    isAlarmActive = uiState.isAlarmActive,
+                    alarmMessage = uiState.alarmMessage,
+                    onSosClick = { viewModel.triggerSos() },
+                    onTestClick = { viewModel.testAlarmSound() },
+                    onStopClick = { viewModel.stopAlarm() }
+                )
+            }
+
             item {
                 ConnectionStatusCard(
                     isConnected = uiState.isWatchConnected,
@@ -118,6 +131,81 @@ fun DashboardScreen(
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("إضافة جهة اتصال")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * بطاقة نداء الطوارئ: ضغط الزر يشغّل صفارة إنذار عالية على الجوال
+ * (نفس الصفارة التي تعمل عند الضغط على SOS في الساعة) ويرسل نداء الاستغاثة.
+ */
+@Composable
+fun SosAlarmCard(
+    isAlarmActive: Boolean,
+    alarmMessage: String?,
+    onSosClick: () -> Unit,
+    onTestClick: () -> Unit,
+    onStopClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isAlarmActive) Color(0xFFB71C1C) else Color(0xFFFFEBEE)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                onClick = { if (isAlarmActive) onStopClick() else onSosClick() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(88.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isAlarmActive) Color.White else Color(0xFFD32F2F),
+                    contentColor = if (isAlarmActive) Color(0xFFB71C1C) else Color.White
+                )
+            ) {
+                Text(
+                    text = if (isAlarmActive) {
+                        stringResource(R.string.sos_alarm_stop)
+                    } else {
+                        stringResource(R.string.sos_button_label)
+                    },
+                    fontSize = if (isAlarmActive) 20.sp else 34.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = if (isAlarmActive) {
+                    alarmMessage ?: stringResource(R.string.sos_alarm_running_hint)
+                } else {
+                    stringResource(R.string.sos_button_hint)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isAlarmActive) Color.White else Color(0xFFB71C1C),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+
+            if (!isAlarmActive) {
+                TextButton(onClick = onTestClick) {
+                    Icon(
+                        imageVector = Icons.Default.VolumeUp,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(stringResource(R.string.sos_test_alarm))
                 }
             }
         }

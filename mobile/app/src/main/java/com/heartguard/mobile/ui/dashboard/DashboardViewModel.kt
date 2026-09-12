@@ -3,14 +3,21 @@ package com.heartguard.mobile.ui.dashboard
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.heartguard.mobile.R
 import com.heartguard.mobile.data.HealthDataHolder
 import com.heartguard.mobile.data.local.AlertEntity
 import com.heartguard.mobile.data.local.EmergencyContactEntity
 import com.heartguard.mobile.data.repository.AlertRepository
+import com.heartguard.mobile.service.EmergencyAlarmService
+import com.heartguard.mobile.service.EmergencyDispatcherService
+import com.heartguard.mobile.service.SosAlarmState
 import com.heartguard.mobile.service.WearableDataSyncService
+import com.heartguard.shared.models.AlertSeverity
+import com.heartguard.shared.models.AlertType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 data class DashboardUiState(
@@ -19,7 +26,9 @@ data class DashboardUiState(
     val temperature: Float = 0f,
     val recentAlerts: List<AlertEntity> = emptyList(),
     val contacts: List<EmergencyContactEntity> = emptyList(),
-    val lastSyncTime: String = "غير متاح"
+    val lastSyncTime: String = "غير متاح",
+    val isAlarmActive: Boolean = false,
+    val alarmMessage: String? = null
 )
 
 @HiltViewModel
@@ -27,7 +36,8 @@ class DashboardViewModel @Inject constructor(
     application: Application,
     private val alertRepository: AlertRepository,
     private val healthDataHolder: HealthDataHolder,
-    private val wearableDataSyncService: WearableDataSyncService
+    private val wearableDataSyncService: WearableDataSyncService,
+    private val emergencyDispatcher: EmergencyDispatcherService
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -71,6 +81,17 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update { it.copy(isWatchConnected = connected) }
             }
         }
+
+        viewModelScope.launch {
+            EmergencyAlarmService.alarmState.collect { state ->
+                _uiState.update {
+                    it.copy(
+                        isAlarmActive = state is SosAlarmState.Active,
+                        alarmMessage = (state as? SosAlarmState.Active)?.message
+                    )
+                }
+            }
+        }
     }
 
     fun addContact(name: String, phone: String, relationship: String) {
@@ -100,5 +121,37 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             alertRepository.markAlertAsHandled(alertId)
         }
+    }
+
+    /**
+     * زر SOS في الجوال: يسجّل التنبيه، يشغّل صفارة الإنذار العالية،
+     * ثم يرسل الرسائل/المكالمات لجهات الاتصال الطارئة.
+     */
+    fun triggerSos() {
+        viewModelScope.launch {
+            val message = getApplication<Application>().getString(R.string.sos_message_from_phone)
+            val alert = AlertEntity(
+                id = UUID.randomUUID().toString(),
+                type = AlertType.SOS_MANUAL.name,
+                severity = AlertSeverity.CRITICAL.name,
+                message = message
+            )
+            alertRepository.insertAlert(alert)
+
+            // الإنذار الصوتي أولاً حتى لا تسبقه مكالمة الطوارئ
+            EmergencyAlarmService.trigger(getApplication<Application>(), alert.type, alert.message)
+
+            emergencyDispatcher.dispatchEmergencyAlert(alert)
+        }
+    }
+
+    /** تشغيل صفارة الإنذار فقط (للتأكد من ارتفاع الصوت) بدون إرسال رسائل أو مكالمات. */
+    fun testAlarmSound() {
+        val message = getApplication<Application>().getString(R.string.sos_alarm_test_message)
+        EmergencyAlarmService.trigger(getApplication<Application>(), AlertType.SOS_MANUAL.name, message)
+    }
+
+    fun stopAlarm() {
+        EmergencyAlarmService.stop(getApplication<Application>())
     }
 }
