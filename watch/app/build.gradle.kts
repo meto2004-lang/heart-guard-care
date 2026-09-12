@@ -7,11 +7,15 @@ plugins {
 }
 
 android {
+    // الـ namespace يبقى مختلفاً حتى لا تتعارض أصناف R و Hilt بين الوحدتين
     namespace = "com.heartguard.watch"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.heartguard.watch"
+        // مهم: Wear Data Layer (DataClient / MessageClient) لا يوصل البيانات إلا بين
+        // تطبيقين يحملان نفس applicationId ونفس التوقيع على الجهازين، لذلك معرّف تطبيق
+        // الساعة مطابق لمعرّف تطبيق الجوال - وإلا لن يصل تنبيه SOS من الساعة أبداً.
+        applicationId = "com.heartguard.mobile"
         minSdk = 30
         targetSdk = 35
         versionCode = 1
