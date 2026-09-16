@@ -34,10 +34,25 @@ jobs:
 
       - name: Install Android platform & build-tools
         run: |
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+          set -o pipefail
+          {
+            echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            echo "PATH=$PATH"
+            ls "$ANDROID_SDK_ROOT" || true
+            ls "$ANDROID_SDK_ROOT/cmdline-tools" || true
+            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+            if [ ! -x "$SDKMANAGER" ]; then
+              SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)"
+            fi
+            if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+              echo "sdkmanager not found, trying PATH..."
+              SDKMANAGER="sdkmanager"
+            fi
+            echo "Using sdkmanager: $SDKMANAGER"
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+          } 2>&1 | tee sdk-install.log
 
       - name: Build debug APKs (mobile + watch)
         run: |
@@ -75,7 +90,7 @@ jobs:
         run: |
           git config user.name "arena-build-bot"
           git config user.email "arena-build-bot@users.noreply.github.com"
-          { echo "===== TAIL OF FAILED BUILD ====="; tail -c 60000 build.log 2>/dev/null || echo "(no build.log)"; } > build-error-tail.log
+          { echo "===== SDK INSTALL LOG ====="; tail -c 20000 sdk-install.log 2>/dev/null || echo "(no sdk-install.log)"; echo; echo "===== TAIL OF FAILED BUILD ====="; tail -c 40000 build.log 2>/dev/null || echo "(no build.log)"; } > build-error-tail.log
           git add -f build-error-tail.log
           git commit -m "build: capture failure log" || exit 0
           git push origin HEAD
