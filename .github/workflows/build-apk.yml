@@ -69,3 +69,13 @@ jobs:
           fi
           git commit -m "build: debug APKs (mobile + watch) from CI"
           git push origin HEAD
+
+      - name: Save build log on failure
+        if: failure()
+        run: |
+          git config user.name "arena-build-bot"
+          git config user.email "arena-build-bot@users.noreply.github.com"
+          { echo "===== TAIL OF FAILED BUILD ====="; tail -c 60000 build.log 2>/dev/null || echo "(no build.log)"; } > build-error-tail.log
+          git add -f build-error-tail.log
+          git commit -m "build: capture failure log" || exit 0
+          git push origin HEAD
