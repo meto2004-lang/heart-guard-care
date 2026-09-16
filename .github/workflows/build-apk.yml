@@ -3,7 +3,7 @@ name: Build APKs (debug)
 on:
   push:
     branches: ["arena/01a0a8b3-heart-guard-care"]
-    paths-ignore: ["apks/**"]
+    paths-ignore: ["apks/**", "build-error-tail.log"]
   workflow_dispatch:
 
 permissions:
@@ -32,18 +32,18 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android platform & build-tools
         run: |
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          echo "ANDROID_HOME=$ANDROID_HOME"
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build debug APKs (mobile + watch)
         run: |
           chmod +x gradlew
-          ./gradlew :mobile:app:assembleDebug :watch:app:assembleDebug --stacktrace
+          set -o pipefail
+          ./gradlew :mobile:app:assembleDebug :watch:app:assembleDebug --stacktrace 2>&1 | tee build.log
 
       - name: Collect APKs
         run: |
