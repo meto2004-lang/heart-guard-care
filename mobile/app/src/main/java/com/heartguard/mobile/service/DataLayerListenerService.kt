@@ -90,64 +90,79 @@ class DataLayerListenerService : WearableListenerService() {
 
     private fun handleAlertMessage(data: ByteArray) {
         try {
-            val json = JSONObject(String(data))
-            val alertType = json.optString(AlertConstants.EXTRA_ALERT_TYPE) ?: return
-            val severity = json.optString(AlertConstants.EXTRA_SEVERITY, "HIGH")
-            val message = json.optString(AlertConstants.EXTRA_MESSAGE, "")
-            val timestamp = json.optLong(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis())
-            val heartRate = if (json.has(AlertConstants.EXTRA_HEART_RATE)) json.getInt(AlertConstants.EXTRA_HEART_RATE) else null
-            val temperature = if (json.has(AlertConstants.EXTRA_TEMPERATURE)) json.getDouble(AlertConstants.EXTRA_TEMPERATURE).toFloat() else null
-            val alertId = System.currentTimeMillis().toString()
-
-            Log.w(TAG, "Alert message received: $alertType - $message")
-
-            serviceScope.launch {
-                val alert = AlertEntity(
+            val json = JSONObject(String(data, Charsets.UTF_8))
+            // Older watches omit the ID on MessageClient. Their DataClient copy
+            // still has an ID and is processed normally. Never invent a new ID
+            // for a second delivery of the same event.
+            val alertId = json.optString(AlertConstants.EXTRA_ALERT_ID)
+                .takeIf { !json.isNull(AlertConstants.EXTRA_ALERT_ID) && it.isNotBlank() }
+            if (alertId == null) {
+                Log.w(TAG, "Ignoring alert message without an event ID; awaiting DataClient copy")
+                return
+            }
+            val alertType = json.optString(AlertConstants.EXTRA_ALERT_TYPE)
+                .takeIf { !json.isNull(AlertConstants.EXTRA_ALERT_TYPE) && it.isNotBlank() } ?: return
+            processAlert(
+                AlertEntity(
                     id = alertId,
                     type = alertType,
-                    severity = severity,
-                    message = message,
-                    heartRate = heartRate,
-                    temperature = temperature,
-                    timestamp = timestamp
+                    severity = json.optString(AlertConstants.EXTRA_SEVERITY, "HIGH"),
+                    message = json.optString(AlertConstants.EXTRA_MESSAGE, ""),
+                    timestamp = json.optLong(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis()),
+                    heartRate = if (json.has(AlertConstants.EXTRA_HEART_RATE)) json.getInt(AlertConstants.EXTRA_HEART_RATE) else null,
+                    temperature = if (json.has(AlertConstants.EXTRA_TEMPERATURE)) json.getDouble(AlertConstants.EXTRA_TEMPERATURE).toFloat() else null
                 )
-                alertRepository.insertAlert(alert)
-                notifyCaregiver(alertType, message, severity)
-                emergencyDispatcher.dispatchEmergencyAlert(alert)
-            }
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse alert message", e)
         }
     }
 
     private fun handleEmergencyAlert(dataItem: com.google.android.gms.wearable.DataItem) {
-        val dataMap = DataMapItem.fromDataItem(dataItem).dataMap
-
-        val alertType = dataMap.getString(AlertConstants.EXTRA_ALERT_TYPE) ?: return
-        val severity = dataMap.getString(AlertConstants.EXTRA_SEVERITY) ?: "HIGH"
-        val message = dataMap.getString(AlertConstants.EXTRA_MESSAGE) ?: ""
-        val timestamp = dataMap.getString(AlertConstants.EXTRA_TIMESTAMP)?.toLongOrNull() ?: System.currentTimeMillis()
-        val heartRate = if (dataMap.containsKey(AlertConstants.EXTRA_HEART_RATE)) dataMap.getInt(AlertConstants.EXTRA_HEART_RATE) else null
-        val temperature = if (dataMap.containsKey(AlertConstants.EXTRA_TEMPERATURE)) dataMap.getFloat(AlertConstants.EXTRA_TEMPERATURE) else null
-        val alertId = dataMap.getString("id") ?: System.currentTimeMillis().toString()
-
-        Log.w(TAG, "Emergency alert received: $alertType - $message")
-
-        serviceScope.launch {
-            val alert = AlertEntity(
-                id = alertId,
-                type = alertType,
-                severity = severity,
-                message = message,
-                heartRate = heartRate,
-                temperature = temperature,
-                timestamp = timestamp
+        try {
+            val dataMap = DataMapItem.fromDataItem(dataItem).dataMap
+            val alertId = dataMap.getString(AlertConstants.EXTRA_ALERT_ID)?.takeIf { it.isNotBlank() }
+            if (alertId == null) {
+                Log.w(TAG, "Ignoring DataClient alert without an event ID")
+                return
+            }
+            val alertType = dataMap.getString(AlertConstants.EXTRA_ALERT_TYPE)?.takeIf { it.isNotBlank() } ?: return
+            processAlert(
+                AlertEntity(
+                    id = alertId,
+                    type = alertType,
+                    severity = dataMap.getString(AlertConstants.EXTRA_SEVERITY) ?: "HIGH",
+                    message = dataMap.getString(AlertConstants.EXTRA_MESSAGE) ?: "",
+                    timestamp = dataMap.getString(AlertConstants.EXTRA_TIMESTAMP)?.toLongOrNull() ?: System.currentTimeMillis(),
+                    heartRate = if (dataMap.containsKey(AlertConstants.EXTRA_HEART_RATE)) dataMap.getInt(AlertConstants.EXTRA_HEART_RATE) else null,
+                    temperature = if (dataMap.containsKey(AlertConstants.EXTRA_TEMPERATURE)) dataMap.getFloat(AlertConstants.EXTRA_TEMPERATURE) else null
+                )
             )
-            alertRepository.insertAlert(alert)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse DataClient alert", e)
+        }
+    }
 
-            notifyCaregiver(alertType, message, severity)
-
-            emergencyDispatcher.dispatchEmergencyAlert(alert)
+    /** Both transports pass through the same persistent, atomic duplicate gate. */
+    private fun processAlert(alert: AlertEntity) {
+        serviceScope.launch {
+            try {
+                if (!alertRepository.insertAlertIfNew(alert)) {
+                    Log.d(TAG, "Ignoring duplicate alert: ${alert.id}")
+                    return@launch
+                }
+                // Notification permissions must not prevent SMS/call dispatch.
+                try {
+                    notifyCaregiver(alert.type, alert.message, alert.severity)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to notify caregiver for ${alert.id}", e)
+                }
+                emergencyDispatcher.dispatchEmergencyAlert(alert)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to process alert ${alert.id}", e)
+            }
         }
     }
 

@@ -39,6 +39,12 @@ class AlertRepository @Inject constructor(
         caregiverDao.insertAlert(alert)
     }
 
+    /** True only for the first delivery; duplicates must not trigger side effects. */
+    suspend fun insertAlertIfNew(alert: AlertEntity): Boolean {
+        require(alert.id.isNotBlank()) { "An incoming alert must have a stable event ID" }
+        return caregiverDao.insertAlert(alert) != -1L
+    }
+
     suspend fun markAlertAsRead(alertId: String) {
         caregiverDao.markAlertAsRead(alertId)
     }

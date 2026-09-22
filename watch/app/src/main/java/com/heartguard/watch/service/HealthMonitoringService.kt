@@ -178,6 +178,17 @@ class HealthMonitoringService : android.app.Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Also unregister sensors when Android destroys the service without an
+        // explicit ACTION_STOP, otherwise singleton listeners retain callbacks.
+        heartRateSensorManager.stopTracking()
+        skinTemperatureSensorManager.stopTracking()
+        fallDetectionEngine.stopMonitoring()
+        heartRateSensorManager.onHeartRateUpdate = null
+        heartRateSensorManager.onHeartRateAnomaly = null
+        skinTemperatureSensorManager.onTemperatureUpdate = null
+        skinTemperatureSensorManager.onTemperatureAnomaly = null
+        fallDetectionEngine.onFallDetected = null
+        healthDataServer.stop()
         serviceScope.cancel()
         releaseWakeLock()
     }

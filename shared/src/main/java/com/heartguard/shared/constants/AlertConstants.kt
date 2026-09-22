@@ -9,6 +9,7 @@ object AlertConstants {
     const val MSG_ALERT = "/msg/alert"
     const val MSG_REQUEST_DATA = "/msg/request_data"
 
+    const val EXTRA_ALERT_ID = "id"
     const val EXTRA_ALERT_TYPE = "alert_type"
     const val EXTRA_SEVERITY = "severity"
     const val EXTRA_MESSAGE = "message"

@@ -21,8 +21,10 @@ interface CaregiverDao {
     @Query("DELETE FROM emergency_contacts WHERE id = :contactId")
     suspend fun deleteContactById(contactId: Long)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAlert(alert: AlertEntity)
+    // The primary key is the event ID shared by both Wear transports. Inserting
+    // atomically avoids a check-then-insert race between concurrent callbacks.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAlert(alert: AlertEntity): Long
 
     @Query("SELECT * FROM alerts ORDER BY timestamp DESC")
     fun getAllAlerts(): Flow<List<AlertEntity>>
