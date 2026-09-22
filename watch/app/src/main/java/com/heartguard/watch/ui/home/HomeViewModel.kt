@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.heartguard.shared.constants.SensorConstants
 import com.heartguard.watch.data.local.entities.HealthDataEntity
 import com.heartguard.watch.data.repository.HealthRepository
 import com.heartguard.watch.service.EmergencyAlertService
