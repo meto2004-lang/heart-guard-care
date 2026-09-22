@@ -56,17 +56,19 @@ class EmergencyAlertService @Inject constructor(
         Log.w(TAG, "Heart rate anomaly: $type ($hr bpm)")
         vibrateEmergency()
 
-        val (message, priority) = when (type) {
-            "CRITICAL_HIGH" -> "نبض مرتفع جداً: $hr" to AlertConstants.PRIORITY_CRITICAL
-            "CRITICAL_LOW" -> "نبض منخفض جداً: $hr" to AlertConstants.PRIORITY_CRITICAL
-            "HIGH" -> "نبض مرتفع: $hr" to AlertConstants.PRIORITY_HIGH
-            "LOW" -> "نبض منخفض: $hr" to AlertConstants.PRIORITY_HIGH
-            else -> "شذوذ في النبض: $hr" to AlertConstants.PRIORITY_MEDIUM
+        val (message, priority, alertType) = when (type) {
+            "CRITICAL_HIGH" -> Triple("نبض مرتفع جداً: $hr", AlertConstants.PRIORITY_CRITICAL, AlertType.HEART_RATE_CRITICAL_HIGH)
+            "CRITICAL_LOW" -> Triple("نبض منخفض جداً: $hr", AlertConstants.PRIORITY_CRITICAL, AlertType.HEART_RATE_CRITICAL_LOW)
+            "HIGH" -> Triple("نبض مرتفع: $hr", AlertConstants.PRIORITY_HIGH, AlertType.HEART_RATE_HIGH)
+            "LOW" -> Triple("نبض منخفض: $hr", AlertConstants.PRIORITY_HIGH, AlertType.HEART_RATE_LOW)
+            else -> Triple("شذوذ في النبض: $hr", AlertConstants.PRIORITY_MEDIUM, AlertType.HEART_RATE_LOW)
         }
 
+        val severity = if (priority >= 3) "CRITICAL" else "HIGH"
+
         val alertData = PutDataMapRequest.create(AlertConstants.ALERT_PATH).apply {
-            dataMap.putString(AlertConstants.EXTRA_ALERT_TYPE, AlertType.HEART_RATE_HIGH.name)
-            dataMap.putString(AlertConstants.EXTRA_SEVERITY, if (priority >= 3) "CRITICAL" else "HIGH")
+            dataMap.putString(AlertConstants.EXTRA_ALERT_TYPE, alertType.name)
+            dataMap.putString(AlertConstants.EXTRA_SEVERITY, severity)
             dataMap.putString(AlertConstants.EXTRA_MESSAGE, message)
             dataMap.putString(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis().toString())
             dataMap.putInt(AlertConstants.EXTRA_HEART_RATE, hr)
@@ -76,7 +78,7 @@ class EmergencyAlertService @Inject constructor(
 
         val request = alertData.asPutDataRequest().setUrgent()
         dataClient.putDataItem(request).await()
-        sendViaMessageClient(buildAlertJson(AlertType.HEART_RATE_HIGH.name, if (priority >= 3) "CRITICAL" else "HIGH", message, hr = hr))
+        sendViaMessageClient(buildAlertJson(alertType.name, severity, message, hr = hr))
     }
 
     suspend fun sendTemperatureAlert(type: String, temp: Float) {

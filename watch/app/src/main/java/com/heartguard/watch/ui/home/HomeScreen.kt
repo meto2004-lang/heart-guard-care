@@ -120,6 +120,54 @@ fun HomeScreen(
                     }
                 }
             }
+
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            item {
+                Button(
+                    onClick = { viewModel.triggerTestFall() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = Color(0xFFFF9800)
+                    )
+                ) {
+                    Text(
+                        text = "تجربة سقوط (35 m/s²)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.triggerTestHeartRate70() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFFF9800))
+                    ) {
+                        Text(text = "70 نبض", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = { viewModel.triggerTestHeartRate65() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFF44336))
+                    ) {
+                        Text(text = "65 نبض", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }

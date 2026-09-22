@@ -33,16 +33,25 @@ class DataLayerListenerService : WearableListenerService() {
 
         /**
          * التنبيهات التي تشغّل صفارة الإنذار العالية على الجوال.
-         * SOS دائماً، إضافةً إلى أي تنبيه حرج (سقوط، نبض/حرارة حرجة).
+         * SOS، السقوط، وانخفاض/ارتفاع النبض (70 و 65) - حسب طلب المستخدم.
          */
         private val LOUD_ALARM_ALERT_TYPES = setOf(
             AlertType.SOS_MANUAL.name,
-            AlertType.FALL_DETECTED.name
+            AlertType.FALL_DETECTED.name,
+            AlertType.HEART_RATE_LOW.name,
+            AlertType.HEART_RATE_CRITICAL_LOW.name,
+            AlertType.HEART_RATE_HIGH.name,
+            AlertType.HEART_RATE_CRITICAL_HIGH.name
         )
 
-        private fun requiresLoudAlarm(alertType: String, severity: String): Boolean =
-            alertType in LOUD_ALARM_ALERT_TYPES ||
-                severity.equals(AlertSeverity.CRITICAL.name, ignoreCase = true)
+        private fun requiresLoudAlarm(alertType: String, severity: String): Boolean {
+            val isCritical = severity.equals(AlertSeverity.CRITICAL.name, ignoreCase = true)
+            val isHigh = severity.equals(AlertSeverity.HIGH.name, ignoreCase = true)
+            val isHeartRateAlert = alertType.contains("HEART_RATE")
+            // المطلوب: عند 70 (LOW) و 65 (CRITICAL_LOW) → صفارة + اتصال
+            // لذلك أي تنبيه نبض HIGH أو CRITICAL يشغل الصفارة العالية
+            return alertType in LOUD_ALARM_ALERT_TYPES || isCritical || (isHigh && isHeartRateAlert)
+        }
     }
 
     @Inject lateinit var alertRepository: AlertRepository

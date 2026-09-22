@@ -151,6 +151,42 @@ class DashboardViewModel @Inject constructor(
         EmergencyAlarmService.trigger(getApplication<Application>(), AlertType.SOS_MANUAL.name, message)
     }
 
+    /**
+     * اختبار إنذار انخفاض النبض عند 70 - يشغل صفارة + يتصل بجهات الاتصال
+     * حسب طلب المستخدم: عند 70 اعطاء انذار بالصوت وقيامه بالاتصال
+     */
+    fun testHeartRate70() {
+        viewModelScope.launch {
+            val alert = AlertEntity(
+                id = UUID.randomUUID().toString(),
+                type = AlertType.HEART_RATE_LOW.name,
+                severity = AlertSeverity.HIGH.name,
+                message = "نبض منخفض: 70 نبضة/دقيقة - اختبار",
+                heartRate = 70,
+                timestamp = System.currentTimeMillis()
+            )
+            alertRepository.insertAlert(alert)
+            EmergencyAlarmService.trigger(getApplication<Application>(), alert.type, alert.message)
+            emergencyDispatcher.dispatchEmergencyAlert(alert)
+        }
+    }
+
+    fun testHeartRate65() {
+        viewModelScope.launch {
+            val alert = AlertEntity(
+                id = UUID.randomUUID().toString(),
+                type = AlertType.HEART_RATE_CRITICAL_LOW.name,
+                severity = AlertSeverity.CRITICAL.name,
+                message = "نبض منخفض جداً: 65 نبضة/دقيقة - اختبار حرج",
+                heartRate = 65,
+                timestamp = System.currentTimeMillis()
+            )
+            alertRepository.insertAlert(alert)
+            EmergencyAlarmService.trigger(getApplication<Application>(), alert.type, alert.message)
+            emergencyDispatcher.dispatchEmergencyAlert(alert)
+        }
+    }
+
     fun stopAlarm() {
         EmergencyAlarmService.stop(getApplication<Application>())
     }

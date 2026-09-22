@@ -59,6 +59,13 @@ fun DashboardScreen(
             }
 
             item {
+                HeartRateTestCard(
+                    onTest70 = { viewModel.testHeartRate70() },
+                    onTest65 = { viewModel.testHeartRate65() }
+                )
+            }
+
+            item {
                 ConnectionStatusCard(
                     isConnected = uiState.isWatchConnected,
                     lastSyncTime = uiState.lastSyncTime
@@ -383,6 +390,56 @@ fun ContactCard(
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, "حذف", tint = Color.Red)
             }
+        }
+    }
+}
+
+@Composable
+fun HeartRateTestCard(
+    onTest70: () -> Unit,
+    onTest65: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "اختبار إنذار انخفاض النبض",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onTest70,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF57F17))
+                ) {
+                    Text("70 منخفض\n+ اتصال", fontSize = 11.sp, textAlign = TextAlign.Center)
+                }
+                Button(
+                    onClick = onTest65,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) {
+                    Text("65 حرج جداً\n+ اتصال", fontSize = 11.sp, textAlign = TextAlign.Center)
+                }
+            }
+            Text(
+                text = "يشغل صفارة عالية + يرسل SMS + يتصل بجهات الاتصال",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

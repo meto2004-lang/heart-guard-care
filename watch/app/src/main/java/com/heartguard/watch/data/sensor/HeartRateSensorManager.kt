@@ -17,9 +17,9 @@ class HeartRateSensorManager @Inject constructor(
     companion object {
         private const val TAG = "HeartRateSensorManager"
         const val HR_HIGH_THRESHOLD = 120
-        const val HR_LOW_THRESHOLD = 50
+        const val HR_LOW_THRESHOLD = 70
         const val HR_CRITICAL_HIGH = 150
-        const val HR_CRITICAL_LOW = 40
+        const val HR_CRITICAL_LOW = 65
     }
 
     var onHeartRateUpdate: ((Int, Int) -> Unit)? = null

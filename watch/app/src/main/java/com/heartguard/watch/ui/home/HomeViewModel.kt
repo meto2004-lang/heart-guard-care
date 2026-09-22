@@ -79,12 +79,30 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun triggerTestFall() {
+        viewModelScope.launch {
+            emergencyAlertService.sendFallAlert()
+        }
+    }
+
+    fun triggerTestHeartRate70() {
+        viewModelScope.launch {
+            emergencyAlertService.sendHeartRateAlert("LOW", 70)
+        }
+    }
+
+    fun triggerTestHeartRate65() {
+        viewModelScope.launch {
+            emergencyAlertService.sendHeartRateAlert("CRITICAL_LOW", 65)
+        }
+    }
+
     private fun getHeartRateStatusText(hr: Int): String {
         return when {
             hr >= 150 -> "حرج مرتفع"
             hr >= 120 -> "مرتفع"
-            hr <= 40 -> "حرج منخفض"
-            hr <= 50 -> "منخفض"
+            hr <= 65 -> "حرج منخفض"
+            hr <= 70 -> "منخفض"
             hr == 0 -> "غير متاح"
             else -> "طبيعي"
         }

@@ -26,15 +26,27 @@ class EmergencyDispatcherService @Inject constructor(
         val contacts = alertRepository.getAllContacts().first()
 
         if (contacts.isEmpty()) {
-            Log.w(TAG, "No emergency contacts configured")
+            Log.w(TAG, "No emergency contacts configured - cannot send SMS/call for ${alert.type}")
             return
         }
 
-        contacts.forEach { contact ->
-            sendSMS(contact.phoneNumber, alert.message)
+        // عند 70 (HEART_RATE_LOW) و 65 (HEART_RATE_CRITICAL_LOW) يجب الاتصال + SMS + صفارة
+        val shouldCall = alert.severity == "CRITICAL" ||
+                alert.severity == "HIGH" ||
+                alert.type.contains("HEART_RATE_LOW") ||
+                alert.type.contains("HEART_RATE_CRITICAL_LOW") ||
+                alert.type == "FALL_DETECTED" ||
+                alert.type == "SOS_MANUAL"
 
-            if (alert.severity == "CRITICAL") {
+        Log.w(TAG, "Dispatching alert ${alert.type} severity=${alert.severity} shouldCall=$shouldCall to ${contacts.size} contacts")
+
+        contacts.forEach { contact ->
+            sendSMS(contact.phoneNumber, "${alert.message} - الوقت: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(alert.timestamp))}")
+
+            if (shouldCall) {
                 makeEmergencyCall(contact.phoneNumber)
+                // تأخير بسيط بين المكالمات لو فيه أكثر من جهة اتصال لتجنب التداخل
+                kotlinx.coroutines.delay(2000)
             }
         }
     }
