@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.heartguard.mobile.R
 import com.heartguard.mobile.data.local.AlertEntity
 import com.heartguard.mobile.data.local.EmergencyContactEntity
+import com.heartguard.shared.constants.SensorConstants
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,21 +75,34 @@ fun DashboardScreen(
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    HealthCard(
-                        title = "النبض",
-                        value = if (uiState.heartRate > 0) "${uiState.heartRate}" else "--",
-                        unit = "نبضة/دقيقة",
-                        modifier = Modifier.weight(1f)
-                    )
-                    HealthCard(
-                        title = "الحرارة",
-                        value = if (uiState.temperature > 0) "${uiState.temperature}" else "--",
-                        unit = "°م",
-                        modifier = Modifier.weight(1f)
+                val isHeartRateLow = uiState.heartRate > 0 &&
+                    uiState.heartRate <= SensorConstants.HR_LOW_THRESHOLD
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        HealthCard(
+                            title = "النبض",
+                            value = if (uiState.heartRate > 0) "${uiState.heartRate}" else "--",
+                            unit = "نبضة/دقيقة",
+                            isAlert = isHeartRateLow,
+                            modifier = Modifier.weight(1f)
+                        )
+                        HealthCard(
+                            title = "الحرارة",
+                            value = if (uiState.temperature > 0) "${uiState.temperature}" else "--",
+                            unit = "°م",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Text(
+                        text = stringResource(
+                            R.string.hr_low_threshold_hint,
+                            SensorConstants.HR_LOW_THRESHOLD
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isHeartRateLow) Color(0xFFB71C1C) else Color.Gray
                     )
                 }
             }
@@ -254,12 +268,13 @@ fun HealthCard(
     title: String,
     value: String,
     unit: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isAlert: Boolean = false
 ) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFE3F2FD)
+            containerColor = if (isAlert) Color(0xFFFFEBEE) else Color(0xFFE3F2FD)
         )
     ) {
         Column(
@@ -276,7 +291,8 @@ fun HealthCard(
             Text(
                 text = value,
                 fontSize = 32.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = if (isAlert) Color(0xFFB71C1C) else Color.Unspecified
             )
             Text(
                 text = unit,
@@ -311,7 +327,8 @@ fun AlertCard(
             Icon(
                 imageVector = when (alert.type) {
                     "FALL_DETECTED" -> Icons.Default.Warning
-                    "HEART_RATE_HIGH", "HEART_RATE_LOW" -> Icons.Default.Favorite
+                    "HEART_RATE_HIGH", "HEART_RATE_LOW",
+                    "HEART_RATE_CRITICAL_HIGH", "HEART_RATE_CRITICAL_LOW" -> Icons.Default.Favorite
                     "TEMPERATURE_FEVER" -> Icons.Default.Thermostat
                     "SOS_MANUAL" -> Icons.Default.Warning
                     else -> Icons.Default.Info

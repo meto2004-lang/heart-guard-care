@@ -2,7 +2,11 @@ package com.heartguard.shared.constants
 
 object SensorConstants {
     const val HR_HIGH_THRESHOLD = 120
-    const val HR_LOW_THRESHOLD = 50
+    /**
+     * Inclusive low-HR phone-alarm threshold requested by the caregiver.
+     * This is not a clinical bradycardia cutoff.
+     */
+    const val HR_LOW_THRESHOLD = 70
     const val HR_CRITICAL_HIGH = 150
     const val HR_CRITICAL_LOW = 40
 

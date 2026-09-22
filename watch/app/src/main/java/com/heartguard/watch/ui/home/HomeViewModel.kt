@@ -81,10 +81,10 @@ class HomeViewModel @Inject constructor(
 
     private fun getHeartRateStatusText(hr: Int): String {
         return when {
-            hr >= 150 -> "حرج مرتفع"
-            hr >= 120 -> "مرتفع"
-            hr <= 40 -> "حرج منخفض"
-            hr <= 50 -> "منخفض"
+            hr >= SensorConstants.HR_CRITICAL_HIGH -> "حرج مرتفع"
+            hr >= SensorConstants.HR_HIGH_THRESHOLD -> "مرتفع"
+            hr <= SensorConstants.HR_CRITICAL_LOW -> "حرج منخفض"
+            hr <= SensorConstants.HR_LOW_THRESHOLD -> "منخفض"
             hr == 0 -> "غير متاح"
             else -> "طبيعي"
         }

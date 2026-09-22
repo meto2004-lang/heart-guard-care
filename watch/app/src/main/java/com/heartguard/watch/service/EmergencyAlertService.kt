@@ -10,7 +10,9 @@ import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import com.heartguard.shared.constants.AlertConstants
+import com.heartguard.shared.constants.SensorConstants
 import com.heartguard.shared.models.AlertType
+import com.heartguard.watch.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
@@ -47,17 +49,37 @@ class EmergencyAlertService @Inject constructor(
 
     suspend fun sendHeartRateAlert(type: String, hr: Int) {
         Log.w(TAG, "Heart rate anomaly: $type ($hr bpm)")
-        val (message, priority) = when (type) {
-            "CRITICAL_HIGH" -> "نبض مرتفع جداً: $hr" to AlertConstants.PRIORITY_CRITICAL
-            "CRITICAL_LOW" -> "نبض منخفض جداً: $hr" to AlertConstants.PRIORITY_CRITICAL
-            "HIGH" -> "نبض مرتفع: $hr" to AlertConstants.PRIORITY_HIGH
-            "LOW" -> "نبض منخفض: $hr" to AlertConstants.PRIORITY_HIGH
-            else -> "شذوذ في النبض: $hr" to AlertConstants.PRIORITY_MEDIUM
+        val (alertType, message, priority) = when (type) {
+            "CRITICAL_HIGH" -> Triple(
+                AlertType.HEART_RATE_CRITICAL_HIGH,
+                "نبض مرتفع جداً: $hr",
+                AlertConstants.PRIORITY_CRITICAL
+            )
+            "CRITICAL_LOW" -> Triple(
+                AlertType.HEART_RATE_CRITICAL_LOW,
+                context.getString(R.string.hr_critical_low_alert, hr),
+                AlertConstants.PRIORITY_CRITICAL
+            )
+            "HIGH" -> Triple(
+                AlertType.HEART_RATE_HIGH,
+                "نبض مرتفع: $hr",
+                AlertConstants.PRIORITY_HIGH
+            )
+            "LOW" -> Triple(
+                AlertType.HEART_RATE_LOW,
+                context.getString(R.string.hr_low_alert, hr, SensorConstants.HR_LOW_THRESHOLD),
+                AlertConstants.PRIORITY_CRITICAL
+            )
+            else -> Triple(
+                AlertType.HEART_RATE_HIGH,
+                "شذوذ في النبض: $hr",
+                AlertConstants.PRIORITY_MEDIUM
+            )
         }
         sendAlert(
             AlertPayload(
-                type = AlertType.HEART_RATE_HIGH,
-                severity = if (priority >= 3) "CRITICAL" else "HIGH",
+                type = alertType,
+                severity = if (priority >= AlertConstants.PRIORITY_HIGH) "CRITICAL" else "HIGH",
                 message = message,
                 priority = priority,
                 heartRate = hr

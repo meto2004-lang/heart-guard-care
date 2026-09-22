@@ -16,10 +16,6 @@ class HeartRateSensorManager @Inject constructor(
 ) : SensorEventListener {
     companion object {
         private const val TAG = "HeartRateSensorManager"
-        const val HR_HIGH_THRESHOLD = 120
-        const val HR_LOW_THRESHOLD = 50
-        const val HR_CRITICAL_HIGH = 150
-        const val HR_CRITICAL_LOW = 40
     }
 
     var onHeartRateUpdate: ((Int, Int) -> Unit)? = null
@@ -28,6 +24,7 @@ class HeartRateSensorManager @Inject constructor(
     private var isTracking = false
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val heartRateSensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE)
+    private val anomalyDetector = HeartRateAnomalyDetector()
 
     fun startTracking() {
         if (isTracking) return
@@ -44,6 +41,7 @@ class HeartRateSensorManager @Inject constructor(
         if (!isTracking) return
         sensorManager.unregisterListener(this)
         isTracking = false
+        anomalyDetector.reset()
         Log.i(TAG, "Heart rate tracking stopped")
     }
 
@@ -65,11 +63,8 @@ class HeartRateSensorManager @Inject constructor(
     }
 
     private fun checkAnomaly(hr: Int) {
-        when {
-            hr >= HR_CRITICAL_HIGH -> onHeartRateAnomaly?.invoke("CRITICAL_HIGH", hr)
-            hr >= HR_HIGH_THRESHOLD -> onHeartRateAnomaly?.invoke("HIGH", hr)
-            hr <= HR_CRITICAL_LOW -> onHeartRateAnomaly?.invoke("CRITICAL_LOW", hr)
-            hr <= HR_LOW_THRESHOLD -> onHeartRateAnomaly?.invoke("LOW", hr)
+        anomalyDetector.process(hr)?.let { type ->
+            onHeartRateAnomaly?.invoke(type, hr)
         }
     }
 

@@ -18,6 +18,7 @@ import com.heartguard.mobile.ui.dashboard.DashboardActivity
 import com.heartguard.shared.constants.AlertConstants
 import com.heartguard.shared.models.AlertSeverity
 import com.heartguard.shared.models.AlertType
+import com.heartguard.shared.utils.HeartRateAlertPolicy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -37,7 +38,9 @@ class DataLayerListenerService : WearableListenerService() {
          */
         private val LOUD_ALARM_ALERT_TYPES = setOf(
             AlertType.SOS_MANUAL.name,
-            AlertType.FALL_DETECTED.name
+            AlertType.FALL_DETECTED.name,
+            AlertType.HEART_RATE_LOW.name,
+            AlertType.HEART_RATE_CRITICAL_LOW.name
         )
 
         private fun requiresLoudAlarm(alertType: String, severity: String): Boolean =
@@ -48,6 +51,7 @@ class DataLayerListenerService : WearableListenerService() {
     @Inject lateinit var alertRepository: AlertRepository
     @Inject lateinit var emergencyDispatcher: EmergencyDispatcherService
     @Inject lateinit var healthDataHolder: HealthDataHolder
+    @Inject lateinit var heartRateLowAlertCoordinator: HeartRateLowAlertCoordinator
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -149,6 +153,12 @@ class DataLayerListenerService : WearableListenerService() {
             try {
                 if (!alertRepository.insertAlertIfNew(alert)) {
                     Log.d(TAG, "Ignoring duplicate alert: ${alert.id}")
+                    return@launch
+                }
+                if (HeartRateAlertPolicy.isLowHeartRateAlert(alert.type, alert.heartRate) &&
+                    !heartRateLowAlertCoordinator.tryBeginEpisodeFromWatch()
+                ) {
+                    Log.d(TAG, "Skipping extra low-HR side effects while episode is active: ${alert.id}")
                     return@launch
                 }
                 // Notification permissions must not prevent SMS/call dispatch.

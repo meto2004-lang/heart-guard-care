@@ -14,4 +14,6 @@
     <string name="notification_channel_description">تنبيهات مراقبة الصحة المستمرة</string>
     <string name="notification_title">حارس القلب نشط</string>
     <string name="notification_text">جاري مراقبة حساسات الصحة...</string>
+    <string name="hr_low_alert">نبض منخفض: %1$d نبضة/دقيقة (الحد %2$d)</string>
+    <string name="hr_critical_low_alert">نبض منخفض جداً: %1$d نبضة/دقيقة</string>
 </resources>

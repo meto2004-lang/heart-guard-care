@@ -2,7 +2,7 @@ name: Build APKs (debug)
 
 on:
   push:
-    branches: ["arena/01a0a8b3-heart-guard-care", "arena/01a0c7ca-heart-guard-care"]
+    branches: ["arena/01a0a8b3-heart-guard-care", "arena/01a0c7ca-heart-guard-care", "arena/01a0caf2-heart-guard-care"]
     paths-ignore: ["apks/**", "build-error-tail.log"]
   workflow_dispatch:
 
