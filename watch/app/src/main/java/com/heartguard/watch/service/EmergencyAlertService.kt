@@ -12,9 +12,9 @@ import com.google.android.gms.wearable.Wearable
 import com.heartguard.shared.constants.AlertConstants
 import com.heartguard.shared.models.AlertType
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,27 +35,18 @@ class EmergencyAlertService @Inject constructor(
 
     suspend fun sendFallAlert() {
         Log.w(TAG, "FALL DETECTED - Sending emergency alert")
-        vibrateEmergency()
-
-        val alertData = PutDataMapRequest.create(AlertConstants.ALERT_PATH).apply {
-            dataMap.putString(AlertConstants.EXTRA_ALERT_TYPE, AlertType.FALL_DETECTED.name)
-            dataMap.putString(AlertConstants.EXTRA_SEVERITY, "CRITICAL")
-            dataMap.putString(AlertConstants.EXTRA_MESSAGE, "تم كشف سقوط!")
-            dataMap.putString(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis().toString())
-            dataMap.putInt(AlertConstants.EXTRA_PRIORITY, AlertConstants.PRIORITY_CRITICAL)
-            dataMap.putString("id", UUID.randomUUID().toString())
-        }
-
-        val request = alertData.asPutDataRequest().setUrgent()
-        dataClient.putDataItem(request).await()
-        sendViaMessageClient(buildAlertJson(AlertType.FALL_DETECTED.name, "CRITICAL", "تم كشف سقوط!"))
-        Log.i(TAG, "Fall alert sent to phone")
+        sendAlert(
+            AlertPayload(
+                type = AlertType.FALL_DETECTED,
+                severity = "CRITICAL",
+                message = "تم كشف سقوط!",
+                priority = AlertConstants.PRIORITY_CRITICAL
+            )
+        )
     }
 
     suspend fun sendHeartRateAlert(type: String, hr: Int) {
         Log.w(TAG, "Heart rate anomaly: $type ($hr bpm)")
-        vibrateEmergency()
-
         val (message, priority) = when (type) {
             "CRITICAL_HIGH" -> "نبض مرتفع جداً: $hr" to AlertConstants.PRIORITY_CRITICAL
             "CRITICAL_LOW" -> "نبض منخفض جداً: $hr" to AlertConstants.PRIORITY_CRITICAL
@@ -63,64 +54,59 @@ class EmergencyAlertService @Inject constructor(
             "LOW" -> "نبض منخفض: $hr" to AlertConstants.PRIORITY_HIGH
             else -> "شذوذ في النبض: $hr" to AlertConstants.PRIORITY_MEDIUM
         }
-
-        val alertData = PutDataMapRequest.create(AlertConstants.ALERT_PATH).apply {
-            dataMap.putString(AlertConstants.EXTRA_ALERT_TYPE, AlertType.HEART_RATE_HIGH.name)
-            dataMap.putString(AlertConstants.EXTRA_SEVERITY, if (priority >= 3) "CRITICAL" else "HIGH")
-            dataMap.putString(AlertConstants.EXTRA_MESSAGE, message)
-            dataMap.putString(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis().toString())
-            dataMap.putInt(AlertConstants.EXTRA_HEART_RATE, hr)
-            dataMap.putInt(AlertConstants.EXTRA_PRIORITY, priority)
-            dataMap.putString("id", UUID.randomUUID().toString())
-        }
-
-        val request = alertData.asPutDataRequest().setUrgent()
-        dataClient.putDataItem(request).await()
-        sendViaMessageClient(buildAlertJson(AlertType.HEART_RATE_HIGH.name, if (priority >= 3) "CRITICAL" else "HIGH", message, hr = hr))
+        sendAlert(
+            AlertPayload(
+                type = AlertType.HEART_RATE_HIGH,
+                severity = if (priority >= 3) "CRITICAL" else "HIGH",
+                message = message,
+                priority = priority,
+                heartRate = hr
+            )
+        )
     }
 
     suspend fun sendTemperatureAlert(type: String, temp: Float) {
         Log.w(TAG, "Temperature anomaly: $type ($temp°C)")
-        vibrateEmergency()
-
         val (message, priority) = when (type) {
             "HIGH_FEVER" -> "حمى عالية: $temp°م" to AlertConstants.PRIORITY_CRITICAL
             "FEVER" -> "حمى: $temp°م" to AlertConstants.PRIORITY_HIGH
             "HEAT_STRESS" -> "إجهاد حراري: $temp°م" to AlertConstants.PRIORITY_MEDIUM
             else -> "شذوذ في الحرارة: $temp°م" to AlertConstants.PRIORITY_LOW
         }
-
-        val alertData = PutDataMapRequest.create(AlertConstants.ALERT_PATH).apply {
-            dataMap.putString(AlertConstants.EXTRA_ALERT_TYPE, AlertType.TEMPERATURE_FEVER.name)
-            dataMap.putString(AlertConstants.EXTRA_SEVERITY, if (priority >= 3) "CRITICAL" else "HIGH")
-            dataMap.putString(AlertConstants.EXTRA_MESSAGE, message)
-            dataMap.putString(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis().toString())
-            dataMap.putFloat(AlertConstants.EXTRA_TEMPERATURE, temp)
-            dataMap.putInt(AlertConstants.EXTRA_PRIORITY, priority)
-            dataMap.putString("id", UUID.randomUUID().toString())
-        }
-
-        val request = alertData.asPutDataRequest().setUrgent()
-        dataClient.putDataItem(request).await()
-        sendViaMessageClient(buildAlertJson(AlertType.TEMPERATURE_FEVER.name, if (priority >= 3) "CRITICAL" else "HIGH", message, temp = temp))
+        sendAlert(
+            AlertPayload(
+                type = AlertType.TEMPERATURE_FEVER,
+                severity = if (priority >= 3) "CRITICAL" else "HIGH",
+                message = message,
+                priority = priority,
+                temperature = temp
+            )
+        )
     }
 
     suspend fun sendSOSAlert() {
         Log.w(TAG, "SOS manually triggered")
+        sendAlert(
+            AlertPayload(
+                type = AlertType.SOS_MANUAL,
+                severity = "CRITICAL",
+                message = "تم ضغط زر الطوارئ!",
+                priority = AlertConstants.PRIORITY_CRITICAL
+            )
+        )
+    }
+
+    private suspend fun sendAlert(alert: AlertPayload) {
         vibrateEmergency()
-
-        val alertData = PutDataMapRequest.create(AlertConstants.ALERT_PATH).apply {
-            dataMap.putString(AlertConstants.EXTRA_ALERT_TYPE, AlertType.SOS_MANUAL.name)
-            dataMap.putString(AlertConstants.EXTRA_SEVERITY, "CRITICAL")
-            dataMap.putString(AlertConstants.EXTRA_MESSAGE, "تم ضغط زر الطوارئ!")
-            dataMap.putString(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis().toString())
-            dataMap.putInt(AlertConstants.EXTRA_PRIORITY, AlertConstants.PRIORITY_CRITICAL)
-            dataMap.putString("id", UUID.randomUUID().toString())
+        try {
+            dataClient.putDataItem(alert.toDataRequest()).await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Still attempt MessageClient if storing the DataItem fails.
+            Log.e(TAG, "Failed to send alert ${alert.id} via DataClient", e)
         }
-
-        val request = alertData.asPutDataRequest().setUrgent()
-        dataClient.putDataItem(request).await()
-        sendViaMessageClient(buildAlertJson(AlertType.SOS_MANUAL.name, "CRITICAL", "تم ضغط زر الطوارئ!"))
+        sendViaMessageClient(alert.toMessageJson())
     }
 
     suspend fun sendHealthDataUpdate(hr: Int?, temp: Float?) {
@@ -153,23 +139,13 @@ class EmergencyAlertService @Inject constructor(
         try {
             val nodes = Wearable.getNodeClient(context).connectedNodes.await()
             for (node in nodes) {
-                messageClient.sendMessage(node.id, path, jsonString.toByteArray()).await()
+                messageClient.sendMessage(node.id, path, jsonString.toByteArray(Charsets.UTF_8)).await()
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send via MessageClient", e)
         }
-    }
-
-    private fun buildAlertJson(type: String, severity: String, message: String, hr: Int? = null, temp: Float? = null): String {
-        return JSONObject().apply {
-            put("type", "alert")
-            put(AlertConstants.EXTRA_ALERT_TYPE, type)
-            put(AlertConstants.EXTRA_SEVERITY, severity)
-            put(AlertConstants.EXTRA_MESSAGE, message)
-            put(AlertConstants.EXTRA_TIMESTAMP, System.currentTimeMillis())
-            hr?.let { put(AlertConstants.EXTRA_HEART_RATE, it) }
-            temp?.let { put(AlertConstants.EXTRA_TEMPERATURE, it.toDouble()) }
-        }.toString()
     }
 
     private fun vibrateEmergency() {

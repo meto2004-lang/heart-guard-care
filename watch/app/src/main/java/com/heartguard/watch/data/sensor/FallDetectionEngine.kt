@@ -21,20 +21,25 @@ class FallDetectionEngine @Inject constructor(
 
     fun startMonitoring() {
         if (isMonitoring) return
-        isMonitoring = true
-
         accelerometerSensorManager.onFallDetected = {
             Log.w(TAG, "Fall detected by accelerometer")
             onFallDetected?.invoke()
         }
 
         accelerometerSensorManager.startTracking()
-        Log.i(TAG, "Fall detection monitoring started")
+        isMonitoring = accelerometerSensorManager.isTrackingActive()
+        if (isMonitoring) {
+            Log.i(TAG, "Fall detection monitoring started")
+        } else {
+            accelerometerSensorManager.onFallDetected = null
+            Log.w(TAG, "Fall detection unavailable: accelerometer did not start")
+        }
     }
 
     fun stopMonitoring() {
         isMonitoring = false
         accelerometerSensorManager.stopTracking()
+        accelerometerSensorManager.onFallDetected = null
         Log.i(TAG, "Fall detection monitoring stopped")
     }
 
