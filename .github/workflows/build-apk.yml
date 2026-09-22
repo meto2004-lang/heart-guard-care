@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -72,6 +74,18 @@ jobs:
         with:
           name: HeartGuard-debug-apks
           path: apks/*.apk
+
+      - name: Commit APKs to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apks/HeartGuard-mobile-debug.apk apks/HeartGuard-watch-debug.apk
+          if git diff --cached --quiet; then
+            echo "APKs unchanged"
+            exit 0
+          fi
+          git commit -m "ci: publish debug APKs"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload build logs on failure
         if: failure()
