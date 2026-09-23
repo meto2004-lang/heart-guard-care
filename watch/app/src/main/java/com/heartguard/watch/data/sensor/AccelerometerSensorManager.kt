@@ -61,7 +61,12 @@ class AccelerometerSensorManager @Inject constructor(
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null || event.sensor.type != Sensor.TYPE_ACCELEROMETER || event.values.size < 3) return
-        processAccelerationData(event.values[0], event.values[1], event.values[2])
+        val elapsedMs = if (event.timestamp > 0L) {
+            event.timestamp / 1_000_000L
+        } else {
+            SystemClock.elapsedRealtime()
+        }
+        processAccelerationData(event.values[0], event.values[1], event.values[2], elapsedMs)
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {

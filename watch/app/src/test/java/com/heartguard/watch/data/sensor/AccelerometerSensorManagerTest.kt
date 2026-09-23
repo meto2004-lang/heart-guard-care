@@ -47,22 +47,34 @@ class AccelerometerSensorManagerTest {
         assertTrue(engine.isMonitoringActive())
         assertTrue(shadowOf(platformManager).hasListener(manager))
 
-        manager.onSensorChanged(event(sensor, 30f))
-        manager.onSensorChanged(event(sensor, 31f))
+        replayFall(manager, sensor, startNs = 1_000_000_000L)
         assertEquals(1, alerts)
-        assertEquals(2, updates)
+        assertTrue(updates > 10)
 
         engine.stopMonitoring()
         assertFalse(shadowOf(platformManager).hasListener(manager))
         assertFalse(engine.isMonitoringActive())
-        manager.onSensorChanged(event(sensor, 30f))
+        replayFall(manager, sensor, startNs = 2_000_000_000L)
         assertEquals(1, alerts)
-        assertEquals(2, updates)
 
         engine.startMonitoring()
-        manager.onSensorChanged(event(sensor, 30f))
+        replayFall(manager, sensor, startNs = 3_000_000_000L)
         assertEquals(2, alerts)
         engine.stopMonitoring()
+    }
+
+    @Test
+    fun puttingTheWatchDownDoesNotAlert() {
+        val sensor = ShadowSensor.newInstance(Sensor.TYPE_ACCELEROMETER)
+        shadowOf(platformManager).addSensor(sensor)
+        val manager = AccelerometerSensorManager(context)
+        var alerts = 0
+        manager.onFallDetected = { alerts++ }
+        manager.startTracking()
+        manager.onSensorChanged(event(sensor, 0f, 0f, 30f, 1_000_000_000L))
+        manager.onSensorChanged(event(sensor, 0f, 0f, 9.81f, 1_020_000_000L))
+        assertEquals(0, alerts)
+        manager.stopTracking()
     }
 
     @Test
@@ -73,20 +85,39 @@ class AccelerometerSensorManagerTest {
         var alerts = 0
         manager.onFallDetected = { alerts++ }
         manager.startTracking()
-        manager.onSensorChanged(event(ShadowSensor.newInstance(Sensor.TYPE_GYROSCOPE), 30f))
-        manager.onSensorChanged(event(accelerometer, Float.NaN))
+        manager.onSensorChanged(event(ShadowSensor.newInstance(Sensor.TYPE_GYROSCOPE), 0f, 0f, 30f, 1L))
+        manager.onSensorChanged(event(accelerometer, Float.NaN, 0f, 0f, 2L))
         manager.onSensorChanged(null)
         assertEquals(0, alerts)
         manager.stopTracking()
     }
 
-    private fun event(sensor: Sensor, z: Float): SensorEvent {
+    private fun replayFall(manager: AccelerometerSensorManager, sensor: Sensor, startNs: Long) {
+        var t = startNs
+        fun step(x: Float, y: Float, z: Float) {
+            manager.onSensorChanged(event(sensor, x, y, z, t))
+            t += 20_000_000L
+        }
+        repeat(3) { step(0f, 0f, 9.81f) }
+        repeat(8) { step(0f, 0f, 0.4f) }
+        step(0f, 0f, 32f)
+        repeat(45) { step(0f, 0f, 9.7f) }
+    }
+
+    private fun event(
+        sensor: Sensor,
+        x: Float,
+        y: Float,
+        z: Float,
+        timestampNs: Long
+    ): SensorEvent {
         val constructor = SensorEvent::class.java.getDeclaredConstructor(Int::class.javaPrimitiveType)
         constructor.isAccessible = true
         return constructor.newInstance(3).apply {
             this.sensor = sensor
-            values[0] = 0f
-            values[1] = 0f
+            timestamp = timestampNs
+            values[0] = x
+            values[1] = y
             values[2] = z
         }
     }

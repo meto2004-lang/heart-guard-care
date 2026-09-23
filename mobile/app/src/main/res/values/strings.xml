@@ -36,5 +36,13 @@
     <string name="sos_alarm_test_message">اختبار صوت إنذار الطوارئ</string>
 
     <string name="hr_low_alert_message">نبض منخفض: %1$d نبضة/دقيقة (الحد %2$d)</string>
-    <string name="hr_low_threshold_hint">إنذار على الجوال عند انخفاض النبض إلى %1$d أو أقل — صفارة + رسالة ومكالمة لجهات الطوارئ</string>
+    <string name="hr_low_threshold_hint">إنذار على الجوال عند انخفاض النبض إلى %1$d أو أقل. الراحة/النوم بعد التعلّم تصبح إشعاراً فقط.</string>
+
+    <string name="assistant_title">المساعد الذكي</string>
+    <string name="assistant_card_hint">اسأل لماذا انطلق الإنذار أو اطلب ملخص اليوم</string>
+    <string name="assistant_hint">اكتب سؤالك…</string>
+    <string name="assistant_chip_why">لماذا انطلق الإنذار؟</string>
+    <string name="assistant_chip_summary">ملخص اليوم</string>
+    <string name="assistant_chip_contact">كيف أضيف جهة اتصال؟</string>
+    <string name="assistant_chip_fall">كيف يعمل كشف السقوط؟</string>
 </resources>

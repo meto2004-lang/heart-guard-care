@@ -1,37 +1,21 @@
 package com.heartguard.watch.data.sensor
 
-import com.heartguard.shared.constants.SensorConstants
-import kotlin.math.sqrt
+import com.heartguard.shared.ai.SmartFallDetector
 
 /**
- * Simple impact heuristic, not a clinically validated fall classifier.
- * Requires a new threshold crossing and a cooldown so one impact's sensor
- * samples do not create many distinct emergency events.
+ * Watch adapter around the shared three-phase fall classifier.
  */
 internal class FallImpactDetector {
     companion object {
-        const val COOLDOWN_MS = 10_000L
+        const val COOLDOWN_MS = SmartFallDetector.COOLDOWN_MS
     }
 
-    private var aboveThreshold = false
-    private var lastFallAt: Long? = null
+    private val detector = SmartFallDetector()
 
-    fun process(x: Float, y: Float, z: Float, elapsedRealtimeMs: Long): Boolean {
-        if (!x.isFinite() || !y.isFinite() || !z.isFinite()) return false
-        val magnitude = sqrt(x.toDouble() * x + y.toDouble() * y + z.toDouble() * z)
-        val isAbove = magnitude > SensorConstants.ACCELEROMETER_FALL_THRESHOLD
-        val crossing = isAbove && !aboveThreshold
-        aboveThreshold = isAbove
-        val previous = lastFallAt
-        if (!crossing || (previous != null && elapsedRealtimeMs - previous < COOLDOWN_MS)) {
-            return false
-        }
-        lastFallAt = elapsedRealtimeMs
-        return true
-    }
+    fun process(x: Float, y: Float, z: Float, elapsedRealtimeMs: Long): Boolean =
+        detector.process(x, y, z, elapsedRealtimeMs)
 
     fun reset() {
-        aboveThreshold = false
-        lastFallAt = null
+        detector.reset()
     }
 }

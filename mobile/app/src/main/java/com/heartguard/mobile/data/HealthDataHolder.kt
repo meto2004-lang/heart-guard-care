@@ -9,6 +9,7 @@ import javax.inject.Singleton
 data class LiveHealthData(
     val heartRate: Int = 0,
     val temperature: Float = 0f,
+    val motion: Float = 0f,
     val timestamp: Long = 0L
 )
 

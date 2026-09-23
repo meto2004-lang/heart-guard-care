@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.heartguard.mobile.R
 import com.heartguard.mobile.data.local.AlertEntity
 import com.heartguard.mobile.data.local.EmergencyContactEntity
+import com.heartguard.mobile.ui.assistant.AssistantEntryCard
 import com.heartguard.shared.constants.SensorConstants
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,7 +28,8 @@ import com.heartguard.shared.constants.SensorConstants
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onNavigateToContacts: () -> Unit = {},
-    onNavigateToAlerts: () -> Unit = {}
+    onNavigateToAlerts: () -> Unit = {},
+    onNavigateToAssistant: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -64,6 +66,10 @@ fun DashboardScreen(
                     isConnected = uiState.isWatchConnected,
                     lastSyncTime = uiState.lastSyncTime
                 )
+            }
+
+            item {
+                AssistantEntryCard(onClick = onNavigateToAssistant)
             }
 
             item {

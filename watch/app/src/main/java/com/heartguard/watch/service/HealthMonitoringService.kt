@@ -14,10 +14,13 @@ import androidx.core.app.NotificationCompat
 import com.heartguard.watch.R
 import com.heartguard.watch.data.local.entities.HealthDataEntity
 import com.heartguard.watch.data.repository.HealthRepository
+import com.heartguard.shared.ai.MotionActivityTracker
+import com.heartguard.shared.ai.PersonalRhythmModel
 import com.heartguard.watch.data.sensor.AccelerometerSensorManager
 import com.heartguard.watch.data.sensor.HeartRateSensorManager
 import com.heartguard.watch.data.sensor.SkinTemperatureSensorManager
 import com.heartguard.watch.data.sensor.FallDetectionEngine
+import java.util.Calendar
 import com.heartguard.watch.ui.home.HomeActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
@@ -37,12 +40,15 @@ class HealthMonitoringService : android.app.Service() {
     @Inject lateinit var heartRateSensorManager: HeartRateSensorManager
     @Inject lateinit var skinTemperatureSensorManager: SkinTemperatureSensorManager
     @Inject lateinit var fallDetectionEngine: FallDetectionEngine
+    @Inject lateinit var accelerometerSensorManager: AccelerometerSensorManager
     @Inject lateinit var emergencyAlertService: EmergencyAlertService
     @Inject lateinit var healthRepository: HealthRepository
     @Inject lateinit var healthDataServer: HealthDataServer
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var wakeLock: PowerManager.WakeLock? = null
+    private val motionTracker = MotionActivityTracker()
+    private val rhythmModel = PersonalRhythmModel()
 
     override fun onCreate() {
         super.onCreate()
@@ -63,21 +69,34 @@ class HealthMonitoringService : android.app.Service() {
 
         healthDataServer.start()
 
+        accelerometerSensorManager.onAccelerationUpdate = { x, y, z ->
+            motionTracker.update(x, y, z)
+        }
+
         heartRateSensorManager.onHeartRateUpdate = { hr, status ->
             Log.d(TAG, "Heart rate update received: $hr bpm (accuracy=$status)")
+            val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            val motion = motionTracker.mean()
+            rhythmModel.observe(hr, motion, hour)
             serviceScope.launch {
                 healthRepository.insertHealthData(
                     HealthDataEntity(heartRate = hr, heartRateStatus = status)
                 )
-                emergencyAlertService.sendHealthDataUpdate(hr, null)
+                emergencyAlertService.sendHealthDataUpdate(hr, null, motion)
                 healthDataServer.updateData(hr = hr, temp = null)
             }
         }
 
         heartRateSensorManager.onHeartRateAnomaly = { type, hr ->
-            Log.w(TAG, "Heart rate anomaly detected: $type ($hr bpm)")
+            val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            val authenticity = if (type == "LOW" || type == "CRITICAL_LOW") {
+                rhythmModel.classifyLowHeartRate(hr, motionTracker.mean(), hour)
+            } else {
+                null
+            }
+            Log.w(TAG, "Heart rate anomaly detected: $type ($hr bpm) ${authenticity?.verdict}")
             serviceScope.launch {
-                emergencyAlertService.sendHeartRateAlert(type, hr)
+                emergencyAlertService.sendHeartRateAlert(type, hr, authenticity)
             }
         }
 
@@ -117,6 +136,8 @@ class HealthMonitoringService : android.app.Service() {
         heartRateSensorManager.stopTracking()
         skinTemperatureSensorManager.stopTracking()
         fallDetectionEngine.stopMonitoring()
+        accelerometerSensorManager.onAccelerationUpdate = null
+        motionTracker.reset()
         healthDataServer.stop()
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -188,6 +209,7 @@ class HealthMonitoringService : android.app.Service() {
         skinTemperatureSensorManager.onTemperatureUpdate = null
         skinTemperatureSensorManager.onTemperatureAnomaly = null
         fallDetectionEngine.onFallDetected = null
+        accelerometerSensorManager.onAccelerationUpdate = null
         healthDataServer.stop()
         serviceScope.cancel()
         releaseWakeLock()

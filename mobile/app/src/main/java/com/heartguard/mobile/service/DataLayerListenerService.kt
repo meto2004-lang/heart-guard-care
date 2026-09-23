@@ -43,6 +43,10 @@ class DataLayerListenerService : WearableListenerService() {
             AlertType.HEART_RATE_CRITICAL_LOW.name
         )
 
+        private fun isLikelyFalseAlarm(severity: String): Boolean =
+            severity.equals(AlertSeverity.MEDIUM.name, ignoreCase = true) ||
+                severity.equals(AlertSeverity.LOW.name, ignoreCase = true)
+
         private fun requiresLoudAlarm(alertType: String, severity: String): Boolean =
             alertType in LOUD_ALARM_ALERT_TYPES ||
                 severity.equals(AlertSeverity.CRITICAL.name, ignoreCase = true)
@@ -83,10 +87,11 @@ class DataLayerListenerService : WearableListenerService() {
             val json = JSONObject(String(data))
             val heartRate = if (json.has(AlertConstants.EXTRA_HEART_RATE)) json.getInt(AlertConstants.EXTRA_HEART_RATE) else null
             val temperature = if (json.has(AlertConstants.EXTRA_TEMPERATURE)) json.getDouble(AlertConstants.EXTRA_TEMPERATURE).toFloat() else null
+            val motion = if (json.has(AlertConstants.EXTRA_MOTION)) json.getDouble(AlertConstants.EXTRA_MOTION).toFloat() else null
 
-            Log.d(TAG, "Health message received: HR=$heartRate, Temp=$temperature")
+            Log.d(TAG, "Health message received: HR=$heartRate, Temp=$temperature, Motion=$motion")
             healthDataHolder.setWatchConnected(true)
-            healthDataHolder.updateHealthData(heartRate, temperature)
+            healthDataHolder.updateHealthData(heartRate, temperature, motion)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse health message", e)
         }
@@ -167,7 +172,11 @@ class DataLayerListenerService : WearableListenerService() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to notify caregiver for ${alert.id}", e)
                 }
-                emergencyDispatcher.dispatchEmergencyAlert(alert)
+                if (!isLikelyFalseAlarm(alert.severity)) {
+                    emergencyDispatcher.dispatchEmergencyAlert(alert)
+                } else {
+                    Log.i(TAG, "Skipping SMS/call for likely false alarm ${alert.id}")
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -187,10 +196,14 @@ class DataLayerListenerService : WearableListenerService() {
             dataMap.getFloat(AlertConstants.EXTRA_TEMPERATURE)
         } else null
 
-        Log.d(TAG, "Health data received: HR=$heartRate, Temp=$temperature")
+        val motion = if (dataMap.containsKey(AlertConstants.EXTRA_MOTION)) {
+            dataMap.getFloat(AlertConstants.EXTRA_MOTION)
+        } else null
+
+        Log.d(TAG, "Health data received: HR=$heartRate, Temp=$temperature, Motion=$motion")
 
         healthDataHolder.setWatchConnected(true)
-        healthDataHolder.updateHealthData(heartRate, temperature)
+        healthDataHolder.updateHealthData(heartRate, temperature, motion)
     }
 
     /**

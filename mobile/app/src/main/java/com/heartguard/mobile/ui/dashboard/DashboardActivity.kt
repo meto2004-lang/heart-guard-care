@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.heartguard.mobile.service.EmergencyAlarmService
+import com.heartguard.mobile.ui.assistant.AssistantScreen
 import com.heartguard.mobile.ui.contacts.ContactsScreen
 import com.heartguard.mobile.ui.theme.HeartGuardMobileTheme
 import dagger.hilt.android.AndroidEntryPoint

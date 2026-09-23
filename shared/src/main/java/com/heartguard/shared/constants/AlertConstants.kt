@@ -17,6 +17,12 @@ object AlertConstants {
     const val EXTRA_HEART_RATE = "heart_rate"
     const val EXTRA_TEMPERATURE = "temperature"
     const val EXTRA_PRIORITY = "priority"
+    const val EXTRA_MOTION = "motion"
+    const val EXTRA_AUTHENTICITY = "authenticity"
+    const val EXTRA_EXPLANATION = "explanation"
+
+    const val AUTHENTICITY_EMERGENCY = "EMERGENCY"
+    const val AUTHENTICITY_LIKELY_FALSE = "LIKELY_FALSE_ALARM"
 
     const val PRIORITY_LOW = 1
     const val PRIORITY_MEDIUM = 2

@@ -9,6 +9,8 @@ import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
+import com.heartguard.shared.ai.AuthenticityResult
+import com.heartguard.shared.ai.AlertVerdict
 import com.heartguard.shared.constants.AlertConstants
 import com.heartguard.shared.constants.SensorConstants
 import com.heartguard.shared.models.AlertType
@@ -41,15 +43,20 @@ class EmergencyAlertService @Inject constructor(
             AlertPayload(
                 type = AlertType.FALL_DETECTED,
                 severity = "CRITICAL",
-                message = "تم كشف سقوط!",
+                message = "تم كشف سقوط (سقوط حر + اصطدام + سكون).",
                 priority = AlertConstants.PRIORITY_CRITICAL
             )
         )
     }
 
-    suspend fun sendHeartRateAlert(type: String, hr: Int) {
-        Log.w(TAG, "Heart rate anomaly: $type ($hr bpm)")
-        val (alertType, message, priority) = when (type) {
+    suspend fun sendHeartRateAlert(
+        type: String,
+        hr: Int,
+        authenticity: AuthenticityResult? = null
+    ) {
+        Log.w(TAG, "Heart rate anomaly: $type ($hr bpm) verdict=${authenticity?.verdict}")
+        val likelyFalse = authenticity?.verdict == AlertVerdict.LIKELY_FALSE_ALARM
+        val (alertType, baseMessage, priority) = when (type) {
             "CRITICAL_HIGH" -> Triple(
                 AlertType.HEART_RATE_CRITICAL_HIGH,
                 "نبض مرتفع جداً: $hr",
@@ -68,7 +75,7 @@ class EmergencyAlertService @Inject constructor(
             "LOW" -> Triple(
                 AlertType.HEART_RATE_LOW,
                 context.getString(R.string.hr_low_alert, hr, SensorConstants.HR_LOW_THRESHOLD),
-                AlertConstants.PRIORITY_CRITICAL
+                if (likelyFalse) AlertConstants.PRIORITY_MEDIUM else AlertConstants.PRIORITY_CRITICAL
             )
             else -> Triple(
                 AlertType.HEART_RATE_HIGH,
@@ -76,14 +83,31 @@ class EmergencyAlertService @Inject constructor(
                 AlertConstants.PRIORITY_MEDIUM
             )
         }
+        val message = if (authenticity != null) {
+            "$baseMessage — ${authenticity.reasonAr}"
+        } else {
+            baseMessage
+        }
+        val severity = when {
+            likelyFalse -> "MEDIUM"
+            priority >= AlertConstants.PRIORITY_HIGH -> "CRITICAL"
+            else -> "HIGH"
+        }
         sendAlert(
             AlertPayload(
                 type = alertType,
-                severity = if (priority >= AlertConstants.PRIORITY_HIGH) "CRITICAL" else "HIGH",
+                severity = severity,
                 message = message,
                 priority = priority,
-                heartRate = hr
-            )
+                heartRate = hr,
+                authenticity = if (likelyFalse) {
+                    AlertConstants.AUTHENTICITY_LIKELY_FALSE
+                } else {
+                    AlertConstants.AUTHENTICITY_EMERGENCY
+                },
+                explanation = authenticity?.reasonAr
+            ),
+            vibrate = !likelyFalse
         )
     }
 
@@ -118,8 +142,8 @@ class EmergencyAlertService @Inject constructor(
         )
     }
 
-    private suspend fun sendAlert(alert: AlertPayload) {
-        vibrateEmergency()
+    private suspend fun sendAlert(alert: AlertPayload, vibrate: Boolean = true) {
+        if (vibrate) vibrateEmergency()
         try {
             dataClient.putDataItem(alert.toDataRequest()).await()
         } catch (e: CancellationException) {
@@ -131,13 +155,14 @@ class EmergencyAlertService @Inject constructor(
         sendViaMessageClient(alert.toMessageJson())
     }
 
-    suspend fun sendHealthDataUpdate(hr: Int?, temp: Float?) {
+    suspend fun sendHealthDataUpdate(hr: Int?, temp: Float?, motion: Float? = null) {
         try {
-            Log.d(TAG, "Sending health data update: HR=$hr, Temp=$temp")
+            Log.d(TAG, "Sending health data update: HR=$hr, Temp=$temp, Motion=$motion")
 
             val dataMap = PutDataMapRequest.create(AlertConstants.HEALTH_DATA_PATH).apply {
                 hr?.let { dataMap.putInt(AlertConstants.EXTRA_HEART_RATE, it) }
                 temp?.let { dataMap.putFloat(AlertConstants.EXTRA_TEMPERATURE, it) }
+                motion?.let { dataMap.putFloat(AlertConstants.EXTRA_MOTION, it) }
                 dataMap.putLong("timestamp", System.currentTimeMillis())
             }
 
@@ -148,6 +173,7 @@ class EmergencyAlertService @Inject constructor(
             val json = JSONObject().apply {
                 hr?.let { put(AlertConstants.EXTRA_HEART_RATE, it) }
                 temp?.let { put(AlertConstants.EXTRA_TEMPERATURE, it.toDouble()) }
+                motion?.let { put(AlertConstants.EXTRA_MOTION, it.toDouble()) }
                 put("timestamp", System.currentTimeMillis())
             }
             sendViaMessageClient(json.toString(), AlertConstants.MSG_HEALTH_UPDATE)

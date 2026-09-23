@@ -167,8 +167,12 @@ class WearableDataSyncService @Inject constructor(
                     dataMap.getFloat(AlertConstants.EXTRA_TEMPERATURE)
                 } else null
 
-                Log.d(TAG, "Wear API sync: HR=$heartRate, Temp=$temperature")
-                healthDataHolder.updateHealthData(heartRate, temperature)
+                val motion = if (dataMap.containsKey(AlertConstants.EXTRA_MOTION)) {
+                    dataMap.getFloat(AlertConstants.EXTRA_MOTION)
+                } else null
+
+                Log.d(TAG, "Wear API sync: HR=$heartRate, Temp=$temperature, Motion=$motion")
+                healthDataHolder.updateHealthData(heartRate, temperature, motion)
             }
             dataItems.release()
         } catch (e: Exception) {
@@ -195,9 +199,13 @@ class WearableDataSyncService @Inject constructor(
                     json.getDouble(AlertConstants.EXTRA_TEMPERATURE).toFloat()
                 } else null
 
+                val motion = if (json.has(AlertConstants.EXTRA_MOTION)) {
+                    json.getDouble(AlertConstants.EXTRA_MOTION).toFloat()
+                } else null
+
                 Log.d(TAG, "HTTP sync success from $host: HR=$heartRate, Temp=$temperature")
                 healthDataHolder.setWatchConnected(true)
-                healthDataHolder.updateHealthData(heartRate, temperature)
+                healthDataHolder.updateHealthData(heartRate, temperature, motion)
             }
             connection.disconnect()
         } catch (e: Exception) {

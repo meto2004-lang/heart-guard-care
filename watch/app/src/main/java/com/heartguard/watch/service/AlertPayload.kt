@@ -15,6 +15,8 @@ internal data class AlertPayload(
     val priority: Int,
     val heartRate: Int? = null,
     val temperature: Float? = null,
+    val authenticity: String? = null,
+    val explanation: String? = null,
     val id: String = UUID.randomUUID().toString(),
     val timestamp: Long = System.currentTimeMillis()
 ) {
@@ -29,6 +31,8 @@ internal data class AlertPayload(
             dataMap.putInt(AlertConstants.EXTRA_PRIORITY, priority)
             heartRate?.let { dataMap.putInt(AlertConstants.EXTRA_HEART_RATE, it) }
             temperature?.let { dataMap.putFloat(AlertConstants.EXTRA_TEMPERATURE, it) }
+            authenticity?.let { dataMap.putString(AlertConstants.EXTRA_AUTHENTICITY, it) }
+            explanation?.let { dataMap.putString(AlertConstants.EXTRA_EXPLANATION, it) }
         }
         return request.asPutDataRequest().setUrgent()
     }
@@ -43,5 +47,7 @@ internal data class AlertPayload(
         put(AlertConstants.EXTRA_PRIORITY, priority)
         heartRate?.let { put(AlertConstants.EXTRA_HEART_RATE, it) }
         temperature?.let { put(AlertConstants.EXTRA_TEMPERATURE, it.toDouble()) }
+        authenticity?.let { put(AlertConstants.EXTRA_AUTHENTICITY, it) }
+        explanation?.let { put(AlertConstants.EXTRA_EXPLANATION, it) }
     }.toString()
 }
