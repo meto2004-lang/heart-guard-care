@@ -108,4 +108,20 @@ class HeartRateLowAlertCoordinator @Inject constructor(
             Log.e(TAG, "Failed to raise local low-HR alert", e)
         }
     }
+
+    private fun showQuietNotification(message: String) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "health_insights"
+        nm.createNotificationChannel(
+            NotificationChannel(channelId, "ملاحظات النبض", NotificationManager.IMPORTANCE_DEFAULT)
+        )
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("نبض منخفض — راحة محتملة")
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setAutoCancel(true)
+            .build()
+        nm.notify(2002, notification)
+    }
 }

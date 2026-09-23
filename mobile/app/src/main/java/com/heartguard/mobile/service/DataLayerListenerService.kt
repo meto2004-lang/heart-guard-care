@@ -48,8 +48,10 @@ class DataLayerListenerService : WearableListenerService() {
                 severity.equals(AlertSeverity.LOW.name, ignoreCase = true)
 
         private fun requiresLoudAlarm(alertType: String, severity: String): Boolean =
-            alertType in LOUD_ALARM_ALERT_TYPES ||
-                severity.equals(AlertSeverity.CRITICAL.name, ignoreCase = true)
+            !isLikelyFalseAlarm(severity) && (
+                alertType in LOUD_ALARM_ALERT_TYPES ||
+                    severity.equals(AlertSeverity.CRITICAL.name, ignoreCase = true)
+            )
     }
 
     @Inject lateinit var alertRepository: AlertRepository

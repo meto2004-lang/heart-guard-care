@@ -36,10 +36,11 @@ class HealthDataHolder @Inject constructor() {
         )
     }
 
-    fun updateHealthData(hr: Int?, temp: Float?) {
+    fun updateHealthData(hr: Int?, temp: Float?, motion: Float? = null) {
         _healthData.value = _healthData.value.copy(
             heartRate = hr ?: _healthData.value.heartRate,
             temperature = temp ?: _healthData.value.temperature,
+            motion = motion ?: _healthData.value.motion,
             timestamp = System.currentTimeMillis()
         )
     }

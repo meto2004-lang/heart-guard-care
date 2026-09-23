@@ -73,11 +73,16 @@ class AccelerometerSensorManager @Inject constructor(
         Log.d(TAG, "Accelerometer accuracy changed: $accuracy")
     }
 
-    fun processAccelerationData(x: Float, y: Float, z: Float) {
+    fun processAccelerationData(
+        x: Float,
+        y: Float,
+        z: Float,
+        elapsedRealtimeMs: Long = SystemClock.elapsedRealtime()
+    ) {
         // Ignore callbacks already queued when tracking was stopped.
         if (!isTracking || !x.isFinite() || !y.isFinite() || !z.isFinite()) return
         onAccelerationUpdate?.invoke(x, y, z)
-        if (impactDetector.process(x, y, z, SystemClock.elapsedRealtime())) {
+        if (impactDetector.process(x, y, z, elapsedRealtimeMs)) {
             Log.w(TAG, "Possible fall detected by accelerometer impact")
             onFallDetected?.invoke()
         }

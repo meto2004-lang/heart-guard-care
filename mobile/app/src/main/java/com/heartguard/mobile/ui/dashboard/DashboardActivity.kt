@@ -45,12 +45,14 @@ class DashboardActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var showContacts by remember { mutableStateOf(false) }
+                    var showAssistant by remember { mutableStateOf(false) }
 
-                    if (showContacts) {
-                        ContactsScreen(onBack = { showContacts = false })
-                    } else {
-                        DashboardScreen(
-                            onNavigateToContacts = { showContacts = true }
+                    when {
+                        showContacts -> ContactsScreen(onBack = { showContacts = false })
+                        showAssistant -> AssistantScreen(onBack = { showAssistant = false })
+                        else -> DashboardScreen(
+                            onNavigateToContacts = { showContacts = true },
+                            onNavigateToAssistant = { showAssistant = true }
                         )
                     }
                 }

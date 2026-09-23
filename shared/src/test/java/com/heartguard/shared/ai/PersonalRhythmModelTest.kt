@@ -9,7 +9,7 @@ class PersonalRhythmModelTest {
     @Test
     fun criticalLowIsAlwaysEmergency() {
         val model = trainedResting()
-        val result = model.classifyLowHeartRate(40, motion = 9.8f, hourOfDay = 2)
+        val result = model.classifyLowHeartRate(40, motionMagnitude = 9.8f, hourOfDay = 2)
         assertEquals(AlertVerdict.EMERGENCY, result.verdict)
         assertTrue(result.reasonAr.contains("حرج"))
     }
@@ -17,7 +17,7 @@ class PersonalRhythmModelTest {
     @Test
     fun unknownUserDoesNotFilterYet() {
         val model = PersonalRhythmModel()
-        val result = model.classifyLowHeartRate(65, motion = 9.8f, hourOfDay = 23)
+        val result = model.classifyLowHeartRate(65, motionMagnitude = 9.8f, hourOfDay = 23)
         assertEquals(AlertVerdict.EMERGENCY, result.verdict)
         assertTrue(result.reasonAr.contains("يتعلم"))
     }
@@ -25,7 +25,7 @@ class PersonalRhythmModelTest {
     @Test
     fun restPatternNearBaselineIsLikelyFalseAlarm() {
         val model = trainedResting()
-        val result = model.classifyLowHeartRate(66, motion = 9.8f, hourOfDay = 23)
+        val result = model.classifyLowHeartRate(66, motionMagnitude = 9.8f, hourOfDay = 23)
         assertEquals(AlertVerdict.LIKELY_FALSE_ALARM, result.verdict)
         assertFalse(result.isEmergency)
     }
@@ -33,7 +33,7 @@ class PersonalRhythmModelTest {
     @Test
     fun lowHeartRateWhileWalkingIsEmergency() {
         val model = trainedResting()
-        val result = model.classifyLowHeartRate(65, motion = 15f, hourOfDay = 12)
+        val result = model.classifyLowHeartRate(65, motionMagnitude = 15f, hourOfDay = 12)
         assertEquals(AlertVerdict.EMERGENCY, result.verdict)
         assertEquals(ActivityGuess.WALK, result.activity)
     }
